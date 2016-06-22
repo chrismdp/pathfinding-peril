@@ -5,7 +5,7 @@
  */
 
 var app = require('../app');
-var debug = require('debug')('nightwatch-sample:server');
+var debug = require('debug')('pathfinding-peril:server');
 var http = require('http');
 
 /**

@@ -1,5 +1,19 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  .container
+    h1.page_header= title
+
+    .row
+      .col-md-10
+        h1 Map
+        #map
+          each square in map
+            - dim = 30
+            img.square(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px"}, src="/images/#{square.image}.jpg")
+
+      #players.col-md-2
+        h1 Players
+        ul
+          each val in players
+            li= val
