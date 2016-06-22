@@ -2,18 +2,23 @@ extends layout
 
 block content
   .container
-    h1.page_header= title
+    .row
+      .col-xs-12
+        h1.page_header= title
 
     .row
-      .col-md-10
-        h1 Map
+      .col-xs-1
+        #players
+          ul
+            each player in players
+              li(style={"background-color": player.color})= player.name
+      .col-xs-11
         #map
-          each square in map
-            - dim = 30
-            img.square(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px"}, src="/images/#{square.image}.jpg")
+          each square in map.squares
+            - dim = 50
+            img.tile(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px"}, src="/images/#{square.image}")
+          each player in players
+            .player
+              - square = map.squares[player.location]
+              img.tile(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px", "background-color": player.color }, src=player.image)
 
-      #players.col-md-2
-        h1 Players
-        ul
-          each val in players
-            li= val

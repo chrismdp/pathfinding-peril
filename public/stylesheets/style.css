@@ -1,7 +1,21 @@
+body {
+  background-color: black !important;
+  color: white !important;
+}
+
+#players ul {
+  list-style: none;
+  padding: 0;
+}
+
+#players li {
+  padding: 5px;
+}
+
 #map {
   position: relative;
 }
 
-#map img.square {
+#map img.tile {
   position: absolute;
 }

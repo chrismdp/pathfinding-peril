@@ -11,7 +11,7 @@ module.exports = {
     request({
       url: "http://localhost:3000/players.json",
       method: "POST",
-      json: {"name": "Player One"},
+      json: {"name": "Player One", "webhook": "http://localhost:3000/loopback/always-s" },
     });
 
     browser
