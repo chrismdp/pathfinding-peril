@@ -3,13 +3,18 @@ body {
   color: white !important;
 }
 
-#players ul {
+#players {
   list-style: none;
   padding: 0;
 }
 
 #players li {
   padding: 5px;
+}
+
+#players li .command {
+  padding: 5px;
+  color: gray;
 }
 
 #map {

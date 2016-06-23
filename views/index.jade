@@ -5,20 +5,45 @@ block content
     .row
       .col-xs-12
         h1.page_header= title
+    .row
+      #message.alert
 
     .row
-      .col-xs-1
-        #players
-          ul
-            each player in players
-              li(style={"background-color": player.color})= player.name
-      .col-xs-11
+      .col-xs-2
+        ul#players
+      .col-xs-10
         #map
           each square in map.squares
-            - dim = 50
-            img.tile(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px"}, src="/images/#{square.image}")
-          each player in players
-            .player
-              - square = map.squares[player.location]
-              img.tile(style={top: "#{square.y * dim}px", left: "#{square.x * dim}px", width: "#{dim}px", height: "#{dim}px", "background-color": player.color }, src=player.image)
+            img.tile(class="tile tile-#{square.id}" style={top: "#{square.y * 40}px", left: "#{square.x * 40}px", width: "#{40}px", height: "#{40}px"}, src="/images/#{square.image}")
+          each p in players
+            script(type='text/javascript').
+              $(document).ready(function() {
+                var player = !{JSON.stringify(p)};
+                var square = !{JSON.stringify(map.squares[p.location])};
+                add_new_player(player, square);
+              });
+  script(type='text/javascript').
 
+    $(document).ready(function() {
+      Pusher.logToConsole = true;
+
+      var pusher = new Pusher("#{process.env.PUSHER_KEY}", {
+        cluster: 'eu',
+        encrypted: true
+      });
+
+      var channel = pusher.subscribe('game');
+      channel.bind('move', function(data) {
+        var pos = $(".tile-"+data.location).position();
+        $("#map .player-"+data.id).animate({top: "+"+pos.top, left: "+"+pos.left}, 700);
+        $("#players .player-"+data.id+" .command").html(data.command);
+      });
+      channel.bind('new_player', function(data) {
+        var pos = $(".tile-"+data.player.location).position();
+        add_new_player(data.player, {x: pos.left, y: pos.top});
+        $("#message").html(data.player.name+" has joined the game.");
+      });
+      channel.bind('winner', function(data) {
+        $("#message").html(data.player.name+" has won the game!");
+      });
+    });

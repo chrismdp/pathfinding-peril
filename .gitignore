@@ -1,3 +1,4 @@
 *.log
 reports
 node_modules
+KEYS

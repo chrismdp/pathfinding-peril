@@ -1,8 +1,16 @@
 var express = require('express');
 var router = express.Router();
+var Pusher = require('pusher');
+
+var pusher = new Pusher({
+  appId: '219212',
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: 'eu',
+  encrypted: true
+});
 
 var players = [];
-
 
 var map = {
   squares: [],
@@ -30,27 +38,35 @@ for (var i = 0; i < template.length; i++) {
   for (var j = 0; j < row.length; j++) {
     var tile = row[j];
     if (tile == "X") {
-      map.squares.push({ passable: false, image: 'wall.jpg', x: j, y: i});
+      map.squares.push({ id: map.squares.length, passable: false, image: 'wall.jpg', x: j, y: i});
     } else if (tile == ".") {
-      map.squares.push({ passable: true, image: 'floor.jpg', x: j, y: i});
+      map.squares.push({ id: map.squares.length, passable: true, image: 'floor.jpg', x: j, y: i});
     } else if (tile == "S") {
       map.start = map.squares.length;
-      map.squares.push({ passable: true, image: 'stairs.png', x: j, y: i});
+      map.squares.push({ id: map.squares.length, passable: true, image: 'stairs.png', x: j, y: i});
     } else if (tile == "M") {
       map.minotaur_start = map.squares.length;
-      map.squares.push({ passable: true, image: 'floor.jpg', x: j, y: i});
+      map.squares.push({ id: map.squares.length, passable: true, image: 'floor.jpg', x: j, y: i});
     } else if (tile == "F") {
-      map.squares.push({ passable: false, image: 'target.jpg', x: j, y: i});
+      map.finish = map.squares.length;
+      map.squares.push({ id: map.squares.length, passable: true, image: 'target.jpg', x: j, y: i});
     }
   }
 }
 
-players.push({
-  name: 'Minotaur',
-  url: 'http://localhost:3000/minotaur',
-  location: map.minotaur_start,
-  image: '/images/minotaur.gif',
-});
+var MINOTAUR_COUNT = 1;
+
+for (var i = 0; i < MINOTAUR_COUNT; i++) {
+  players.push({
+    id: i,
+    name: 'Minotaur',
+    url: 'http://localhost:3000/minotaur',
+    location: map.minotaur_start,
+    killer: true,
+    tick_delay: 0,
+    image: '/images/minotaur.gif',
+  });
+}
 
 var find_square = function(map, x, y) {
   for (var i = 0; i < map.squares.length; i++) {
@@ -82,13 +98,22 @@ for (var i = 0; i < map.squares.length; i++) {
   }
 }
 
+var push_location = function(player, command) {
+  var data = {
+    id: player.id,
+    location: player.location,
+    command: command,
+  };
+  pusher.trigger('game', 'move', data);
+}
+
 var request = require('request');
 
 var get_command_from = function(map, player) {
   request({
     url: player.url,
     method: "POST",
-    json: {map: map},
+    json: {player: JSON.stringify(player), other_players: JSON.stringify(players), map: JSON.stringify(map)},
   },
   function(err, r, body) {
     if (!err && r.statusCode == 200) {
@@ -96,30 +121,66 @@ var get_command_from = function(map, player) {
       var command = body;
       if ("NSEW".includes(command)) {
         var exits = map.exits[player.location];
-        console.log("EXITS from " + player.location);
-        console.log(exits);
         if (exits[command]) {
           player.location = exits[command];
+          push_location(player, command);
         }
       }
     }
   });
 }
 
+var TICK_DURATION = 2000;
+
 var tick = function() {
-  for (var i = 0; i < players.length; i++) {
-    var player = players[i];
-    get_command_from(map, player);
+  var real_player = false;
+  for (var j = 0; j < players.length; j++) {
+    var killer = players[j];
+    if (killer.killer) {
+      for (var i = 0; i < players.length; i++) {
+        var player = players[i];
+        if (!player.killer) {
+          if (player.location == players[0].location) {
+            player.location = map.start;
+            push_location(player, "DEAD");
+            player.tick_delay = 30000;
+          }
+        }
+      }
+    } else {
+      real_player = true;
+    }
   }
 
-  setTimeout(tick, 1000);
+  if (real_player) {
+    for (var i = 0; i < players.length; i++) {
+      var player = players[i];
+      if (!player.finished) {
+        if (player.location == map.finish) {
+          pusher.trigger('game', 'winner', {player: player});
+          player.finished = true;
+        } else if (players[i].tick_delay > 0) {
+          players[i].tick_delay -= TICK_DURATION;
+          push_location(player, player.tick_delay / 1000);
+        } else {
+          get_command_from(map, player);
+        }
+      }
+    }
+  }
+
+  setTimeout(tick, TICK_DURATION);
 }
 
-setTimeout(tick, 1000);
+setTimeout(tick, TICK_DURATION);
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Pathfinding Peril', players: players, map: map });
+});
+
+router.get('/rules', function(req, res, next) {
+  res.render('rules', { title: 'Pathfinding Peril - Rules' });
 });
 
 router.get('/index.json', function(req, res, next) {
@@ -141,18 +202,23 @@ var colors = [
 ];
 
 router.post('/players.json', function(req, res, next) {
-  players.push({
+  var player = {
+    id: players.length,
     name: req.body.name,
     color: colors[players.length],
     url: req.body.webhook,
+    killer: false,
+    tick_delay: 0,
     location: map.start,
     image: "/images/hero.png",
-  });
+  };
+  players.push(player);
+  pusher.trigger('game', 'new_player', { player: player });
   res.redirect('/index.json');
 });
 
 router.post('/loopback/always-s', function(req, res, next) {
-  res.send("S")
+  res.send("S");
 });
 
 router.post('/minotaur', function(req, res, next) {
