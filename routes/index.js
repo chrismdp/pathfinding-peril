@@ -32,16 +32,16 @@ var Player = function(id, name, url, start) {
   }
 };
 
-//var template = [
-  //"XXXXXXXX",
-  //"X@.....X",
-  //"XXXX.XXX",
-  //"X<X....X",
-  //"X.X.XX.X",
-  //"X.XXX..X",
-  //"X......X",
-  //"XXXXXXXX",
-//];
+var basic = [
+  "XXXXXXXX",
+  "X@.....X",
+  "XXXX.XXX",
+  "X<X....X",
+  "X.X.XX.X",
+  "X.XXX..X",
+  "X......X",
+  "XXXXXXXX",
+];
 
 var template = [
   "XXXXXXXXXXXXXXXXXXXX",
@@ -56,6 +56,24 @@ var template = [
   "X.....X....X.......X",
   "X........XXX..XXXXXX",
   "X..................X",
+  "XXXXXXXXXXXXXXXXXXXX",
+];
+
+var insane = [
+  "XXXXXXXXXXXXXXXXXXXX",
+  "X......X..M..X.....X",
+  "X..MXX.X.....X@XX..X",
+  "X....XXX.XXX.X.XXX.X",
+  "X.XX..X...MX.X.....X",
+  "X..X.<X.MXXX.XXX.X.X",
+  "X.XXXXX......X.....X",
+  "X.X.X...XXXX..MXXX.X",
+  "X.X...XXX..X.X.X.M.X",
+  "X....XX....X.X.....X",
+  "XXXXMXX.XXXX.X.XXX.X",
+  "X....X...X...XM....X",
+  "X.XXXX.X.X.X.XXXX.XX",
+  "X......X...X.......X",
   "XXXXXXXXXXXXXXXXXXXX",
 ];
 
