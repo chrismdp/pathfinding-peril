@@ -24,7 +24,7 @@ var Player = function(id, name, url, start) {
   return {
     id: next_player_id++,
     name: name,
-    color: "hsl("+ (next_player_id % 0.618033988749895) * 360 + ", 50%, 50%)",
+    color: "hsl("+ ((next_player_id * 63) % 360) + ", 50%, 50%)",
     url: url,
     killer: false,
     location: start,
@@ -32,32 +32,32 @@ var Player = function(id, name, url, start) {
   }
 };
 
-var template = [
-  "XXXXXXXX",
-  "X@.....X",
-  "XXXX.XXX",
-  "X<X....X",
-  "X.X.XX.X",
-  "X.XXX..X",
-  "X......X",
-  "XXXXXXXX",
-];
-
 //var template = [
-  //"XXXXXXXXXXXXXXXXXXXX",
-  //"X............X.....X",
-  //"X.@.XX.......X<XX..X",
-  //"X....XX..XXX.X.XXX.X",
-  //"X.....X....X.X.....X",
-  //"X.....X..XXX.XXX.X.X",
-  //"X...XXX......X.....X",
-  //"X...X...XXXX..MXXX.X",
-  //"X.....XXX..X.X.X...X",
-  //"X.....X....X.......X",
-  //"X........XXX..XXXXXX",
-  //"X..................X",
-  //"XXXXXXXXXXXXXXXXXXXX",
+  //"XXXXXXXX",
+  //"X@.....X",
+  //"XXXX.XXX",
+  //"X<X....X",
+  //"X.X.XX.X",
+  //"X.XXX..X",
+  //"X......X",
+  //"XXXXXXXX",
 //];
+
+var template = [
+  "XXXXXXXXXXXXXXXXXXXX",
+  "X............X.....X",
+  "X.<.XX.......X@XX..X",
+  "X....XX..XXX.X.XXX.X",
+  "X.....X...MX.X.....X",
+  "X.....X..XXX.XXX.X.X",
+  "X...XXX......X.....X",
+  "X...X...XXXX..MXXX.X",
+  "X.....XXX..X.X.X...X",
+  "X.....X....X.......X",
+  "X........XXX..XXXXXX",
+  "X..................X",
+  "XXXXXXXXXXXXXXXXXXXX",
+];
 
 for (var i = 0; i < template.length; i++) {
   var row = template[i];
@@ -130,24 +130,27 @@ var push_location = function(player, command) {
 var request = require('request');
 
 var get_command_from = function(map, player) {
-  request({
-    url: player.url,
-    method: "POST",
-    json: {player: player, other_players: players, map: map},
-  },
-  function(err, r, body) {
-    if (!err && r.statusCode == 200) {
-      console.log("DOING " + player.url + " AND GOT " + body);
-      var command = body;
-      if ("NSEW".includes(command)) {
-        var exits = map.exits[player.location];
-        if (exits[command]) {
-          player.location = exits[command];
-          push_location(player, command);
+  try {
+    request({
+      url: player.url,
+      method: "POST",
+      timeout: 10000,
+      json: {player: player, other_players: players, map: map},
+    },
+    function(err, r, body) {
+      console.log("-----> " + player.name + " POST " + player.url + ": " + (err ? err : r.statusCode));
+      if (!err && r.statusCode == 200) {
+        var command = body;
+        if ("NSEW".includes(command)) {
+          var exits = map.exits[player.location];
+          if (exits[command]) {
+            player.location = exits[command];
+            push_location(player, command);
+          }
         }
       }
-    }
-  });
+    });
+  } catch(e) { console.log("-----> EXPECTION! "+e); }
 }
 
 function kill_players_in_death_locations(players, death_locations) {
@@ -193,6 +196,7 @@ function non_killer_in_maze(players) {
 var TICK_DURATION = 2000;
 
 var tick = function() {
+  console.log("-----> TICK");
   var death_locations = collect_death_locations(players);
   var dead_players = kill_players_in_death_locations(players, death_locations);
 
@@ -204,7 +208,7 @@ var tick = function() {
     for (var i = 0; i < players.length; i++) {
       var player = players[i];
       if (!player.finished) {
-        if (player.location == map.finish) {
+        if (!player.killer && player.location == map.finish) {
           pusher.trigger('game', 'winner', {player: player});
           player.finished = true;
         } else {
@@ -234,14 +238,18 @@ router.get('/index.json', function(req, res, next) {
 });
 
 router.post('/players.json', function(req, res, next) {
-  var player = new Player(players.length, req.body.name, req.body.webhook, map.start);
-  players.push(player);
-  pusher.trigger('game', 'new_player', { player: player });
-  res.redirect('/index.json');
+  if (req.body.name && req.body.webhook) {
+    var player = new Player(players.length, req.body.name, req.body.webhook, map.start);
+    players.push(player);
+    pusher.trigger('game', 'new_player', { player: player });
+    res.send(req.body.name + ' JOINED - ' + req.body.webhook);
+  } else {
+    res.send("ERROR - cannot find name or webhook in request body")
+  }
 });
 
 router.post('/loopback/always-s', function(req, res, next) {
-  res.send("S");
+  res.send("E");
 });
 
 router.post('/minotaur', function(req, res, next) {

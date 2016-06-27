@@ -6,11 +6,11 @@ This is a simple game built using node.js, express.js and Pusher to allow people
 
 To join in the game, you'll need to create a web service at a URL that's accessible from where the game server is running from.
 
-To do this, post to `players.json` with the following JSON:
+To do this, post to `http://<server_url>/players.json` with your 'Content-type' header set to 'application/json' with the following JSON:
 
 ```
 {
-  "name":"<Your player name>"
+  "name":"<Your player name>",
   "webhook":"http://192.168.0.2:8080/move"
 }
 ```
@@ -25,16 +25,19 @@ When running, the game will call your webhook every few seconds to find out your
     "location":1
     ...
   },
-  "other_players": {
-    "location":1
+  "other_players": [
+    {
+      "location":1
+      ...
+    },
     ...
-  },
+  ],
   "map": {
     "start":1,
     "finish":0,
     "squares": [
-      { "id":0, "passable":"true", "image":"wall.jpg", "x":2, "y":2 },
-      { "id":1, "passable":"true", "image":"wall.jpg", "x":3, "y":2 },
+      { "id":0, "passable":"true", "image":"floor.jpg", "x":2, "y":2 },
+      { "id":1, "passable":"true", "image":"floor.jpg", "x":3, "y":2 },
       ...
     ],
     "exits": {
@@ -50,7 +53,7 @@ From this, you should be able to build up a picture of the map, and implement a 
 
 Your service has to return one of the following letters in the response: `N`, `S`, `E` or `W`. No other response will be accepted.
 
-If your character dies, they head back to the start to respawn, and have to wait a certain amount of time before they can move again.
+If your character dies they will marked as "DEAD" on the main screen. You'll need to join the game using a new POST to `players.json`.
 
 You can connect to the root of the server to see a live map of what's going on!
 

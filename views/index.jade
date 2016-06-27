@@ -3,15 +3,16 @@ extends layout
 block content
   .container
     .row
-      .col-xs-8
-        #message.alert
-      .col-xs-4
+      .col-xs-6
         h1.page_header= title
+      .col-xs-6
+        #message.alert
+          foo
     .row
-      .col-xs-10
+      .col-xs-9
         #map
           each square in map.squares
-            img.tile(class="tile tile-#{square.id}" style={top: "#{square.y * 40}px", left: "#{square.x * 40}px", width: "#{40}px", height: "#{40}px"}, src="/images/#{square.image}")
+            img.tile(class="tile tile-#{square.id}" style={top: "#{square.y * 20}px", left: "#{square.x * 20}px", width: "#{20}px", height: "#{20}px"}, src="/images/#{square.image}")
           each p in players
             script(type='text/javascript').
               $(document).ready(function() {
@@ -19,7 +20,7 @@ block content
                 var square = !{JSON.stringify(map.squares[p.location])};
                 add_new_player(player, square);
               });
-      .col-xs-2
+      .col-xs-3
         ul#players
   script(type='text/javascript').
 
