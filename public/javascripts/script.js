@@ -14,5 +14,5 @@ function add_new_player(player, square) {
     css("background-color", player.color).
     css("color", player.killer ? "red" : "white").
     append("<span class='command'/>");
-  $("ul#players").append(li);
+  $("ul#players").prepend(li);
 }

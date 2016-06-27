@@ -17,21 +17,47 @@ var map = {
   exits: {},
 };
 
+
+var next_player_id = 0;
+
+var Player = function(id, name, url, start) {
+  return {
+    id: next_player_id++,
+    name: name,
+    color: "hsl("+ (next_player_id % 0.618033988749895) * 360 + ", 50%, 50%)",
+    url: url,
+    killer: false,
+    location: start,
+    image: "/images/hero.png",
+  }
+};
+
 var template = [
-  "XXXXXXXXXXXXXXXXXXXX",
-  "X............X.....X",
-  "X.S.XX.......XFXX..X",
-  "X....XX..XXX.X.XXX.X",
-  "X.....X....X.X.....X",
-  "X.....X..XXX.XXX.X.X",
-  "X...XXX......X.....X",
-  "X...X...XXXX..MXXX.X",
-  "X.....XXX..X.X.X...X",
-  "X.....X....X.......X",
-  "X........XXX..XXXXXX",
-  "X..................X",
-  "XXXXXXXXXXXXXXXXXXXX",
+  "XXXXXXXX",
+  "X@.....X",
+  "XXXX.XXX",
+  "X<X....X",
+  "X.X.XX.X",
+  "X.XXX..X",
+  "X......X",
+  "XXXXXXXX",
 ];
+
+//var template = [
+  //"XXXXXXXXXXXXXXXXXXXX",
+  //"X............X.....X",
+  //"X.@.XX.......X<XX..X",
+  //"X....XX..XXX.X.XXX.X",
+  //"X.....X....X.X.....X",
+  //"X.....X..XXX.XXX.X.X",
+  //"X...XXX......X.....X",
+  //"X...X...XXXX..MXXX.X",
+  //"X.....XXX..X.X.X...X",
+  //"X.....X....X.......X",
+  //"X........XXX..XXXXXX",
+  //"X..................X",
+  //"XXXXXXXXXXXXXXXXXXXX",
+//];
 
 for (var i = 0; i < template.length; i++) {
   var row = template[i];
@@ -41,31 +67,25 @@ for (var i = 0; i < template.length; i++) {
       map.squares.push({ id: map.squares.length, passable: false, image: 'wall.jpg', x: j, y: i});
     } else if (tile == ".") {
       map.squares.push({ id: map.squares.length, passable: true, image: 'floor.jpg', x: j, y: i});
-    } else if (tile == "S") {
+    } else if (tile == "@") {
       map.start = map.squares.length;
       map.squares.push({ id: map.squares.length, passable: true, image: 'stairs.png', x: j, y: i});
     } else if (tile == "M") {
-      map.minotaur_start = map.squares.length;
-      map.squares.push({ id: map.squares.length, passable: true, image: 'floor.jpg', x: j, y: i});
-    } else if (tile == "F") {
+      var minotaur_start = map.squares.length;
+      map.squares.push({ id: minotaur_start, passable: true, image: 'floor.jpg', x: j, y: i});
+      players.push({
+        id: next_player_id++,
+        name: 'Minotaur',
+        url: 'http://localhost:3000/minotaur',
+        location: minotaur_start,
+        killer: true,
+        image: '/images/minotaur.gif',
+      });
+    } else if (tile == "<") {
       map.finish = map.squares.length;
       map.squares.push({ id: map.squares.length, passable: true, image: 'target.jpg', x: j, y: i});
     }
   }
-}
-
-var MINOTAUR_COUNT = 1;
-
-for (var i = 0; i < MINOTAUR_COUNT; i++) {
-  players.push({
-    id: i,
-    name: 'Minotaur',
-    url: 'http://localhost:3000/minotaur',
-    location: map.minotaur_start,
-    killer: true,
-    tick_delay: 0,
-    image: '/images/minotaur.gif',
-  });
 }
 
 var find_square = function(map, x, y) {
@@ -113,7 +133,7 @@ var get_command_from = function(map, player) {
   request({
     url: player.url,
     method: "POST",
-    json: {player: JSON.stringify(player), other_players: JSON.stringify(players), map: JSON.stringify(map)},
+    json: {player: player, other_players: players, map: map},
   },
   function(err, r, body) {
     if (!err && r.statusCode == 200) {
@@ -130,38 +150,63 @@ var get_command_from = function(map, player) {
   });
 }
 
+function kill_players_in_death_locations(players, death_locations) {
+  var dead_players = [];
+  for (var i = 0; i < players.length;) {
+    var player = players[i];
+    if (!player.killer) {
+      if (death_locations.indexOf(player.location) != -1) {
+        dead_players.push(player);
+        players[i] = players[players.length - 1];
+        players.pop();
+        continue;
+      }
+    }
+    i++;
+  }
+  return dead_players;
+}
+
+function collect_death_locations(players) {
+  var result = [];
+  for (var i = 0; i < players.length; i++) {
+    var player = players[i];
+    if (player.killer) {
+      result.push(player.location);
+    }
+  }
+  return result;
+}
+
+function non_killer_in_maze(players) {
+  var result = false;
+  for (var i = 0; i < players.length; i++) {
+    var player = players[i];
+    if (!player.killer) {
+      result = true;
+      break;
+    }
+  }
+  return result;
+}
+
 var TICK_DURATION = 2000;
 
 var tick = function() {
-  var real_player = false;
-  for (var j = 0; j < players.length; j++) {
-    var killer = players[j];
-    if (killer.killer) {
-      for (var i = 0; i < players.length; i++) {
-        var player = players[i];
-        if (!player.killer) {
-          if (player.location == players[0].location) {
-            player.location = map.start;
-            push_location(player, "DEAD");
-            player.tick_delay = 30000;
-          }
-        }
-      }
-    } else {
-      real_player = true;
-    }
+  var death_locations = collect_death_locations(players);
+  var dead_players = kill_players_in_death_locations(players, death_locations);
+
+  for (var i = 0; i < dead_players.length; i++) {
+    pusher.trigger('game', 'player_killed', { player: dead_players[i] });
   }
 
-  if (real_player) {
+  if (non_killer_in_maze(players)) {
     for (var i = 0; i < players.length; i++) {
       var player = players[i];
       if (!player.finished) {
         if (player.location == map.finish) {
           pusher.trigger('game', 'winner', {player: player});
           player.finished = true;
-        } else if (players[i].tick_delay > 0) {
-          players[i].tick_delay -= TICK_DURATION;
-          push_location(player, player.tick_delay / 1000);
         } else {
           get_command_from(map, player);
         }
@@ -184,34 +229,12 @@ router.get('/rules', function(req, res, next) {
 });
 
 router.get('/index.json', function(req, res, next) {
-  res.send({ map: map, players: players });
+  var sample = new Player(players.length, "Example name", "http://192.168.0.2/move", map.start);
+    res.send({player: sample, other_players: [sample], map: map});
 });
 
-var colors = [
-  'Red',
-  'Green',
-  'Blue',
-  'Lime',
-  'Cyan',
-  'Purple',
-  'Yellow',
-  'Orange',
-  'FireBrick',
-  'Salmon',
-  'HotPink'
-];
-
 router.post('/players.json', function(req, res, next) {
-  var player = {
-    id: players.length,
-    name: req.body.name,
-    color: colors[players.length],
-    url: req.body.webhook,
-    killer: false,
-    tick_delay: 0,
-    location: map.start,
-    image: "/images/hero.png",
-  };
+  var player = new Player(players.length, req.body.name, req.body.webhook, map.start);
   players.push(player);
   pusher.trigger('game', 'new_player', { player: player });
   res.redirect('/index.json');

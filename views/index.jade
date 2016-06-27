@@ -3,14 +3,11 @@ extends layout
 block content
   .container
     .row
-      .col-xs-12
+      .col-xs-8
+        #message.alert
+      .col-xs-4
         h1.page_header= title
     .row
-      #message.alert
-
-    .row
-      .col-xs-2
-        ul#players
       .col-xs-10
         #map
           each square in map.squares
@@ -22,6 +19,8 @@ block content
                 var square = !{JSON.stringify(map.squares[p.location])};
                 add_new_player(player, square);
               });
+      .col-xs-2
+        ul#players
   script(type='text/javascript').
 
     $(document).ready(function() {
@@ -42,6 +41,11 @@ block content
         var pos = $(".tile-"+data.player.location).position();
         add_new_player(data.player, {x: pos.left, y: pos.top});
         $("#message").html(data.player.name+" has joined the game.");
+      });
+      channel.bind('player_killed', function(data) {
+        $("#players .player-"+data.player.id).html(data.player.name+" (DEAD)");
+        $("#map .player-"+data.player.id).remove();
+        $("#message").html(data.player.name+" has been killed!");
       });
       channel.bind('winner', function(data) {
         $("#message").html(data.player.name+" has won the game!");

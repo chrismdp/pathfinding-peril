@@ -1,6 +1,12 @@
 body {
-  background-color: black !important;
+  background-color: #222 !important;
   color: white !important;
+}
+
+h1 {
+  font-family: 'Bilbo Swash Caps', cursive !important;
+  font-size: 2.0em !important;
+  text-align: right;
 }
 
 #players {
@@ -10,11 +16,13 @@ body {
 
 #players li {
   padding: 5px;
+  float: left;
 }
 
 #players li .command {
   padding: 5px;
-  color: gray;
+  font-weight: bold;
+  font-size: 1.25em;
 }
 
 #map {
@@ -23,4 +31,8 @@ body {
 
 #map img.tile {
   position: absolute;
+}
+
+#message {
+  margin: 5px;
 }
